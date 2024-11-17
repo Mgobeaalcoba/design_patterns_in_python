@@ -1,7 +1,9 @@
 import os
 import smtplib
 import faker
+import stripe
 
+from stripe import StripeError
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -24,9 +26,6 @@ class PaymentProcessor:
         if not payment_data.get("source"):
             print("Invalid payment data")
             return
-
-        import stripe
-        from stripe import StripeError
 
         stripe.api_key = os.getenv("STRIPE_API_KEY")
 
