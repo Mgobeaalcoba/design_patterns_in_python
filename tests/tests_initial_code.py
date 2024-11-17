@@ -67,6 +67,15 @@ class PaymentProcessorTests(unittest.TestCase):
         mock_client.assert_called_once()
         mock_client.return_value.messages.create.assert_called_once()
 
+    # Test that the process_transaction method try to send an sms but the Twilio raises an exception
+    @patch('src.solid_principles.initial_code.Client')
+    def test_process_transaction_sms_failed(self, mock_client):
+        customer_data = {"name": self.faker.name(), "contact_info": {"phone": self.faker.phone_number()}}
+        payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
+        mock_client.return_value.messages.create.side_effect = Exception("SMS failed")
+        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
+        mock_client.assert_called_once()
+
     # Test that the contact_info is not an email or phone number
     def test_process_transaction_invalid_contact_info(self):
         customer_data = {"name": self.faker.name(), "contact_info": {"address": self.faker.address()}}
