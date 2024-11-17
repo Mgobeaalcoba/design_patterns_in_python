@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "design-patterns-in-python"
+version = "0.1.0"
+description = ""
+authors = ["Mariano Daniel Gobea Alcoba <mariano.gobea@mercadolibre.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+stripe = "^11.2.0"
+faker = "^33.0.0"
+python-dotenv = "^1.0.1"
+pytest = "^8.3.3"
+pytest-cov = "^6.0.0"
+coverage = "^7.6.5"
+twilio = "^9.3.7"
+
+[tool.coverage.run]
+source = ["unit_testing_python"]
+omit = [
+    "tests/*"  # Excluye la carpeta de tests
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:"
+]
+fail_under = 90
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
