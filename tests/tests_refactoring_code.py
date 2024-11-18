@@ -83,3 +83,7 @@ class PaymentProcessorTests(unittest.TestCase):
         customer_data = {"name": self.faker.name(), "contact_info": {"address": "123 Main St"}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
         self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
+
+    def tearDown(self):
+        if os.path.exists("transactions.log"):
+            os.remove("transactions.log")
