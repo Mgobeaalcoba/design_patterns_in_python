@@ -1,9 +1,7 @@
 import unittest
-import os
 from unittest.mock import patch
 from faker import Faker
-from stripe import StripeError, Charge
-from src.solid_principles.refactoring_code import *
+from src.solid_principles.single_responsability.refactoring_code import *
 
 
 class PaymentProcessorTests(unittest.TestCase):
@@ -31,7 +29,7 @@ class PaymentProcessorTests(unittest.TestCase):
         self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
 
     # Test that the stripe.Charge.create raises an StripeError and the process_transaction method returns None
-    @patch('src.solid_principles.refactoring_code.stripe.Charge.create')
+    @patch('src.solid_principles.single_responsability.refactoring_code.stripe.Charge.create')
     def test_process_transaction_payment_failed(self, mock_charge):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
@@ -39,7 +37,7 @@ class PaymentProcessorTests(unittest.TestCase):
         self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
 
     # Test that the process_transaction method sends an email to the customer when the payment is successful
-    @patch('src.solid_principles.refactoring_code.smtplib.SMTP')
+    @patch('src.solid_principles.single_responsability.refactoring_code.smtplib.SMTP')
     def test_process_transaction_payment_successful(self, mock_smtp):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
@@ -51,7 +49,7 @@ class PaymentProcessorTests(unittest.TestCase):
         mock_smtp.return_value.quit.assert_called_once()
 
     # Test that the process_transaction method try to send an email but the SMTPlib raises an exception
-    @patch('src.solid_principles.refactoring_code.smtplib.SMTP')
+    @patch('src.solid_principles.single_responsability.refactoring_code.smtplib.SMTP')
     def test_process_transaction_email_failed(self, mock_smtp):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
@@ -60,7 +58,7 @@ class PaymentProcessorTests(unittest.TestCase):
         mock_smtp.assert_called_once()
 
     # Test that the process_transaction method sends an SMS to the customer when the payment is successful
-    @patch('src.solid_principles.refactoring_code.Client')
+    @patch('src.solid_principles.single_responsability.refactoring_code.Client')
     def test_process_transaction_sms_successful(self, mock_client):
         customer_data = {"name": self.faker.name(), "contact_info": {"phone": self.faker.phone_number()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
@@ -69,7 +67,7 @@ class PaymentProcessorTests(unittest.TestCase):
         mock_client.return_value.messages.create.assert_called_once()
 
     # Test that the process_transaction method try to send an SMS but the twilio raises an exception
-    @patch('src.solid_principles.refactoring_code.Client')
+    @patch('src.solid_principles.single_responsability.refactoring_code.Client')
     def test_process_transaction_sms_failed(self, mock_client):
         customer_data = {"name": self.faker.name(), "contact_info": {"phone": self.faker.phone_number()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}

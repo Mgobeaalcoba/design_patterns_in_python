@@ -212,7 +212,7 @@ class PaymentService:
     notifier = NotificationSender()
     logger = TransactionLogger()
 
-    def process_transaction(self, customer_data, payment_data) -> None:
+    def process_transaction(self, customer_data, payment_data) -> Charge:
         """
         Orchestrates the payment processing workflow.
 
@@ -236,6 +236,7 @@ class PaymentService:
                 print("No valid contact info provided.")
 
             self.logger.log_transaction(customer_data, payment_data, charge)
+            return charge
         except Exception as e:
             print("Transaction processing failed:", e)
 

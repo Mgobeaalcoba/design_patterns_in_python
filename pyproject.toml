@@ -16,6 +16,11 @@ coverage = "^7.6.5"
 twilio = "^9.3.7"
 readmeai = "^0.5.99.post5"
 
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "tests_*.py"]
+python_classes = ["Test*", "Tests*"]
+python_functions = ["test_*", "tests_*"]
+
 [tool.coverage.run]
 source = ["src"]
 omit = [
