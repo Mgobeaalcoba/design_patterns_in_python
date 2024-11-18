@@ -1,10 +1,17 @@
 """
 Module: Payment Processor
 
-This module provides a class `PaymentProcessor` for processing customer payments
-using Stripe for payment transactions, Twilio for SMS notifications,
-and Gmail SMTP for email confirmations. It handles errors gracefully and logs
-transaction details for audit purposes.
+This module provides functionality for processing customer payments using the Stripe API,
+sending email notifications via Gmail's SMTP service, and sending SMS notifications through Twilio.
+It also validates customer and payment data, handles errors gracefully, and logs transaction details.
+
+Classes:
+    ValidatedCustomerData: Validates customer information before processing.
+    ValidatedPaymentData: Validates payment information for required fields.
+    NotificationSender: Handles sending notifications via email or SMS.
+    TransactionLogger: Logs transaction details for record-keeping.
+    StripePaymentProcessor: Processes payments using Stripe API.
+    PaymentService: Integrates validation, payment processing, notifications, and logging.
 """
 
 import os
@@ -28,42 +35,54 @@ faker = faker.Faker(locale="es_AR")
 
 @dataclass
 class ValidatedCustomerData:
+    """
+    A utility class to validate customer data for required fields.
+    """
+
     @staticmethod
     def validate(customer_data):
         """
-        Validates customer data.
+        Validates customer data to ensure required fields are present.
 
         Args:
             customer_data (dict): Contains customer details.
 
-        Returns:
-            None
+        Raises:
+            ValueError: If required fields are missing.
         """
         if not customer_data.get("name"):
-            raise ValueError("Invalid customer data")
+            raise ValueError("Customer data validation failed: Missing name.")
         if not customer_data.get("contact_info"):
-            raise ValueError("Invalid customer data")
+            raise ValueError("Customer data validation failed: Missing contact info.")
 
 
 @dataclass
 class ValidatedPaymentData:
+    """
+    A utility class to validate payment data for required fields.
+    """
+
     @staticmethod
     def validate(payment_data):
         """
-        Validates payment data.
+        Validates payment data to ensure required fields are present.
 
         Args:
             payment_data (dict): Contains payment details.
 
-        Returns:
-            None
+        Raises:
+            ValueError: If required fields are missing.
         """
         if not payment_data.get("source"):
-            raise ValueError("Invalid payment data")
+            raise ValueError("Payment data validation failed: Missing source.")
 
 
 @dataclass
 class NotificationSender:
+    """
+    A utility class for sending notifications via email or SMS.
+    """
+
     @staticmethod
     def send_email_notification(email):
         """
@@ -72,12 +91,11 @@ class NotificationSender:
         Args:
             email (str): Recipient's email address.
 
-        Returns:
-            None
+        Logs:
+            Sends an email with a payment confirmation message.
         """
         msg = MIMEMultipart()
         password = os.getenv("GMAIL_PASS")
-        print(f'Password: {password}')  # Debugging the password variable
         msg["From"] = "ethical.hacking.python@gmail.com"
         msg["To"] = email
         msg["Subject"] = "Payment Confirmation"
@@ -86,14 +104,12 @@ class NotificationSender:
         try:
             server = smtplib.SMTP('smtp.gmail.com:587')
             server.starttls()
-            print("Server started")
             server.login(user=msg['From'], password=password)
-            print("Server logged in")
             server.sendmail(from_addr=msg["From"], to_addrs=msg['To'], msg=msg.as_string())
-            print("Email sent")
             server.quit()
+            print("Email successfully sent.")
         except Exception as e:
-            print("Error sending email: ", e)
+            print("Error while sending email:", e)
 
     @staticmethod
     def send_sms_notification(phone):
@@ -103,8 +119,8 @@ class NotificationSender:
         Args:
             phone (str): Recipient's phone number.
 
-        Returns:
-            None
+        Logs:
+            Sends an SMS with a payment confirmation message.
         """
         account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         auth_token = os.getenv("TWILIO_AUTH_TOKEN")
@@ -116,14 +132,17 @@ class NotificationSender:
                 body='Ahoy 👋 Thank you for your payment!',
                 to=phone,
             )
-            print(f"SMS sent to {phone}: Thank you for your payment.")
-            print(message.sid)
+            print(f"SMS successfully sent to {phone}. Message SID: {message.sid}")
         except Exception as e:
-            print("Error sending SMS:", e)
+            print("Error while sending SMS:", e)
 
 
 @dataclass
 class TransactionLogger:
+    """
+    A utility class for logging transaction details to a file.
+    """
+
     @staticmethod
     def log_transaction(customer_data, payment_data, charge):
         """
@@ -132,10 +151,10 @@ class TransactionLogger:
         Args:
             customer_data (dict): Customer details.
             payment_data (dict): Payment details.
-            charge (dict): Stripe charge details.
+            charge (dict): Stripe charge response.
 
-        Returns:
-            None
+        Writes:
+            Logs transaction details to 'transactions.log'.
         """
         with open("transactions.log", "a") as log_file:
             log_file.write(
@@ -147,101 +166,95 @@ class TransactionLogger:
 @dataclass
 class StripePaymentProcessor:
     """
-    Handles the processing of payments and customer notifications.
-
-    This class uses:
-    - Stripe for payment processing
-    - Gmail SMTP for email notifications
-    - Twilio for SMS notifications
-
-    Methods:
-        process_transaction(customer_data, payment_data):
-            Validates data, processes the payment, sends notifications,
-            and logs transaction details.
+    Handles Stripe payment processing.
     """
 
     @staticmethod
     def process_transaction(customer_data, payment_data) -> Charge:
         """
-        Processes a customer payment and sends notifications.
+        Processes a customer payment using the Stripe API.
 
         Args:
-            customer_data (dict): Contains customer details:
-                - name (str): Customer's name.
-                - contact_info (dict): Notification details, can include:
-                    - email (str): Customer's email address.
-                    - phone (str): Customer's phone number.
-            payment_data (dict): Contains payment details:
-                - amount (int): Payment amount in cents (e.g., 100 = $1.00).
-                - source (str): Stripe token for the payment source.
+            customer_data (dict): Customer details.
+            payment_data (dict): Payment details.
 
         Returns:
-            None: Logs errors or confirmation messages to the console.
+            Charge: The Stripe charge object.
+
+        Raises:
+            StripeError: If the payment fails.
         """
-        # Configure Stripe API
         stripe.api_key = os.getenv("STRIPE_API_KEY")
 
         try:
-            # Process the payment using Stripe
             charge = stripe.Charge.create(
                 amount=payment_data["amount"],
                 currency="usd",
                 source=payment_data["source"],
-                description="Charge for " + customer_data["name"],
+                description=f"Charge for {customer_data['name']}",
             )
-            print("Payment successful")
+            print("Payment processed successfully.")
+            return charge
         except StripeError as e:
-            print("Payment failed:", e)
+            print("Payment processing failed:", e)
             raise e
-
-        return charge
 
 
 @dataclass
 class PaymentService:
+    """
+    Integrates all components for processing payments and notifications.
+    """
+
     customer_validator = ValidatedCustomerData()
     payment_validator = ValidatedPaymentData()
     payment_processor = StripePaymentProcessor()
     notifier = NotificationSender()
     logger = TransactionLogger()
 
-    def process_transaction(self, customer_data, payment_data) -> Charge:
+    def process_transaction(self, customer_data, payment_data) -> None:
+        """
+        Orchestrates the payment processing workflow.
+
+        Args:
+            customer_data (dict): Customer details.
+            payment_data (dict): Payment details.
+
+        Logs:
+            Validates data, processes payments, sends notifications, and logs transactions.
+        """
         try:
             self.customer_validator.validate(customer_data)
             self.payment_validator.validate(payment_data)
             charge = self.payment_processor.process_transaction(customer_data, payment_data)
-            if customer_data["contact_info"].get("email"):
-                self.notifier.send_email_notification(customer_data["contact_info"].get("email"))
-            elif customer_data["contact_info"].get("phone"):
-                self.notifier.send_sms_notification(customer_data["contact_info"].get("phone"))
+
+            if email := customer_data["contact_info"].get("email"):
+                self.notifier.send_email_notification(email)
+            elif phone := customer_data["contact_info"].get("phone"):
+                self.notifier.send_sms_notification(phone)
             else:
-                print("No valid contact info provided")
+                print("No valid contact info provided.")
+
             self.logger.log_transaction(customer_data, payment_data, charge)
-            return charge
         except Exception as e:
-            print(e)
+            print("Transaction processing failed:", e)
 
 
 if __name__ == "__main__":
-    # Example usage of the PaymentProcessor class
-    payment_processor = PaymentService()
+    # Example usage of PaymentService
+    payment_service = PaymentService()
 
-    # Customer with email notification
     customer_data_with_email = {
         "name": faker.name(),
-        "contact_info": {"email": "gobeamariano@gmail.com"},
+        "contact_info": {"email": "example@gmail.com"},
     }
-
-    # Customer with SMS notification
     customer_data_with_phone = {
         "name": faker.name(),
-        "contact_info": {"phone": "+5491138089556"},
+        "contact_info": {"phone": "+1234567890"},
     }
 
-    # Example payment data
-    payment_data_email = {"amount": faker.random_int(min=100, max=20000), "source": "tok_mastercard"}
-    payment_data_phone = {"amount": faker.random_int(min=100, max=20000), "source": "tok_visa"}
+    payment_data_email = {"amount": 1000, "source": "tok_mastercard"}
+    payment_data_phone = {"amount": 1500, "source": "tok_visa"}
 
-    # Process transactions
-    payment_processor.process_transaction(customer_data_with_email, payment_data_email)
-    payment_processor.process_transaction(customer_data_with_phone, payment_data_phone)
+    payment_service.process_transaction(customer_data_with_email, payment_data_email)
+    payment_service.process_transaction(customer_data_with_phone, payment_data_phone)
