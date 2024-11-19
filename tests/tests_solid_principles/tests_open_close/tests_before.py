@@ -1,15 +1,13 @@
 import unittest
-import os
 from unittest.mock import patch
 from faker import Faker
-from stripe import StripeError
-from src.solid_principles.single_responsability.initial_code import PaymentProcessor
+from src.solid_principles.open_close.before import *
 
 
 class PaymentProcessorTests(unittest.TestCase):
 
     def setUp(self):
-        self.payment_processor = PaymentProcessor()
+        self.payment_processor = PaymentService()
         self.faker = Faker(locale="es_AR")
 
     # Test that the process_transaction method returns None when the customer_data is missing the name key
@@ -31,7 +29,7 @@ class PaymentProcessorTests(unittest.TestCase):
         self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
 
     # Test that the stripe.Charge.create raises an StripeError and the process_transaction method returns None
-    @patch('src.solid_principles.single_responsability.initial_code.stripe.Charge.create')
+    @patch('src.solid_principles.open_close.before.stripe.Charge.create')
     def test_process_transaction_payment_failed(self, mock_charge):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
@@ -39,11 +37,11 @@ class PaymentProcessorTests(unittest.TestCase):
         self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
 
     # Test that the process_transaction method sends an email to the customer when the payment is successful
-    @patch('src.solid_principles.single_responsability.initial_code.smtplib.SMTP')
+    @patch('src.solid_principles.open_close.before.smtplib.SMTP')
     def test_process_transaction_payment_successful(self, mock_smtp):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
-        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
+        self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
         mock_smtp.assert_called_once()
         mock_smtp.return_value.starttls.assert_called_once()
         mock_smtp.return_value.login.assert_called_once()
@@ -51,39 +49,39 @@ class PaymentProcessorTests(unittest.TestCase):
         mock_smtp.return_value.quit.assert_called_once()
 
     # Test that the process_transaction method try to send an email but the SMTPlib raises an exception
-    @patch('src.solid_principles.single_responsability.initial_code.smtplib.SMTP')
+    @patch('src.solid_principles.open_close.before.smtplib.SMTP')
     def test_process_transaction_email_failed(self, mock_smtp):
         customer_data = {"name": self.faker.name(), "contact_info": {"email": self.faker.email()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
         mock_smtp.side_effect = Exception("Email failed")
-        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
+        self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
+        mock_smtp.assert_called_once()
 
-    # Test that the process_transaction method sends an sms to the customer when the payment is successful
-    @patch('src.solid_principles.single_responsability.initial_code.Client')
-    def test_process_transaction_payment_successful_sms(self, mock_client):
+    # Test that the process_transaction method sends an SMS to the customer when the payment is successful
+    @patch('src.solid_principles.open_close.before.Client')
+    def test_process_transaction_sms_successful(self, mock_client):
         customer_data = {"name": self.faker.name(), "contact_info": {"phone": self.faker.phone_number()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
-        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
+        self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
         mock_client.assert_called_once()
         mock_client.return_value.messages.create.assert_called_once()
 
-    # Test that the process_transaction method try to send an sms but the Twilio raises an exception
-    @patch('src.solid_principles.single_responsability.initial_code.Client')
+    # Test that the process_transaction method try to send an SMS but the twilio raises an exception
+    @patch('src.solid_principles.open_close.before.Client')
     def test_process_transaction_sms_failed(self, mock_client):
         customer_data = {"name": self.faker.name(), "contact_info": {"phone": self.faker.phone_number()}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
         mock_client.return_value.messages.create.side_effect = Exception("SMS failed")
-        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
+        self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
         mock_client.assert_called_once()
+        mock_client.return_value.messages.create.assert_called_once()
 
-    # Test that the contact_info is not an email or phone number
-    def test_process_transaction_invalid_contact_info(self):
-        customer_data = {"name": self.faker.name(), "contact_info": {"address": self.faker.address()}}
+    # Test when the transaction have no valid contact info
+    def test_process_transaction_no_valid_contact_info(self):
+        customer_data = {"name": self.faker.name(), "contact_info": {"address": "123 Main St"}}
         payment_data = {"amount": self.faker.random_number(digits=4), "source": "tok_visa", "cvv": 345}
-        self.assertIsNone(self.payment_processor.process_transaction(customer_data, payment_data))
-        self.assertEqual(self.payment_processor.process_transaction(customer_data, payment_data), None)
+        self.assertIsInstance(self.payment_processor.process_transaction(customer_data, payment_data), Charge)
 
-    # Delete the "transactions.log" file post test execution
     def tearDown(self):
         if os.path.exists("transactions.log"):
             os.remove("transactions.log")

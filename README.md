@@ -57,7 +57,7 @@
     ├── poetry.lock
     ├── pyproject.toml
     ├── src
-    │   └── test_solid_principles
+    │   └── tests_solid_principles
     └── tests
         └── __init__.py
 ```

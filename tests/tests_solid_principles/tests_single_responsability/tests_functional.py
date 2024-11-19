@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from src.solid_principles.single_responsability.refactoring_code import *
+from src.solid_principles.single_responsibility.refactoring_code import *
 
 
 class TestValidatedCustomerData(unittest.TestCase):
@@ -24,12 +24,12 @@ class TestValidatedPaymentData(unittest.TestCase):
 
 
 class TestNotificationSender(unittest.TestCase):
-    @patch('src.solid_principles.single_responsability.refactoring_code.smtplib.SMTP')
+    @patch('src.solid_principles.single_responsibility.refactoring_code.smtplib.SMTP')
     def test_send_email_notification(self, mock_smtp):
         NotificationSender.send_email_notification("test@example.com")
         mock_smtp.assert_called_once()
 
-    @patch('src.solid_principles.single_responsability.refactoring_code.Client')
+    @patch('src.solid_principles.single_responsibility.refactoring_code.Client')
     def test_send_sms_notification(self, mock_client):
         NotificationSender.send_sms_notification("+1234567890")
         mock_client.assert_called_once()
@@ -52,7 +52,7 @@ class TestTransactionLogger(unittest.TestCase):
 
 
 class TestStripePaymentProcessor(unittest.TestCase):
-    @patch('src.solid_principles.single_responsability.refactoring_code.stripe.Charge.create')
+    @patch('src.solid_principles.single_responsibility.refactoring_code.stripe.Charge.create')
     def test_process_transaction_success(self, mock_charge):
         mock_charge.return_value = {"status": "succeeded"}
         customer_data = {"name": "John Doe", "contact_info": {"email": "john.doe@example.com"}}
@@ -60,7 +60,7 @@ class TestStripePaymentProcessor(unittest.TestCase):
         charge = StripePaymentProcessor.process_transaction(customer_data, payment_data)
         self.assertEqual(charge["status"], "succeeded")
 
-    @patch('src.solid_principles.single_responsability.refactoring_code.stripe.Charge.create')
+    @patch('src.solid_principles.single_responsibility.refactoring_code.stripe.Charge.create')
     def test_process_transaction_failure(self, mock_charge):
         mock_charge.side_effect = StripeError("Payment failed")
         customer_data = {"name": "John Doe", "contact_info": {"email": "john.doe@example.com"}}
