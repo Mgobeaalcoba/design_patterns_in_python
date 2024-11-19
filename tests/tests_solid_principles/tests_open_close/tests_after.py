@@ -89,19 +89,17 @@ class EmailNotifierTests(unittest.TestCase):
         mock_smtp.return_value.quit.assert_called_once()
 
     @patch('src.solid_principles.open_close.after.smtplib.SMTP')
-    def test_send_confirmation_failure(self, mock_smtp):
-        email_notifier = EmailNotifier()
+    def test_send_confirmation_email_failed(self, mock_smtp):
         customer_data = CustomerData(
             name=self.faker.name(),
             contact_info=ContactInfo(
                 email=self.faker.email()
             )
         )
+        email_notifier = EmailNotifier()
         mock_smtp.side_effect = Exception("Email failed")
-        email_notifier.send_confirmation(customer_data=customer_data)
-        mock_smtp.assert_called_once()
         with self.assertRaises(Exception):
-            raise Exception("Email failed")
+            email_notifier.send_confirmation(customer_data)
 
 
 class SMSNotifierTests(unittest.TestCase):
@@ -132,11 +130,8 @@ class SMSNotifierTests(unittest.TestCase):
             )
         )
         mock_client.return_value.messages.create.side_effect = Exception("SMS failed")
-        sms_notifier.send_confirmation(customer_data=customer_data)
-        mock_client.assert_called_once()
-        mock_client.return_value.messages.create.assert_called_once()
         with self.assertRaises(Exception):
-            raise Exception("SMS failed")
+            sms_notifier.send_confirmation(customer_data=customer_data)
 
 
 class TransactionLoggerTests(unittest.TestCase):
