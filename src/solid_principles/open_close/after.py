@@ -1,3 +1,19 @@
+"""
+Module for payment processing, notifications, and transaction logging.
+
+This module includes classes to handle payments using Stripe, send notifications via email or SMS,
+and log transactions to a file. It also supports data simulation using `faker` and environment
+variable configuration with `dotenv`.
+
+Dependencies:
+- os
+- smtplib
+- faker
+- stripe
+- twilio
+- dotenv
+- pydantic
+"""
 import os
 import smtplib
 import faker
@@ -18,27 +34,72 @@ _ = load_dotenv()
 
 
 class ContactInfo(BaseModel):
+    """
+    Pydantic model representing a customer's contact information.
+
+    Attributes:
+        email (Optional[str]): The customer's email address.
+        phone (Optional[str]): The customer's phone number.
+    """
     email: Optional[str] = None
     phone: Optional[str] = None
 
 
 class CustomerData(BaseModel):
+    """
+    Pydantic model representing a customer's data.
+
+    Attributes:
+        name (str): The customer's full name.
+        contact_info (ContactInfo): The customer's contact details.
+    """
     name: str
     contact_info: ContactInfo
 
 
 class PaymentData(BaseModel):
+    """
+    Pydantic model representing payment information.
+
+    Attributes:
+        amount (int): Payment amount in cents.
+        source (str): The payment source (e.g., token or card ID).
+    """
     amount: int
     source: str
 
 
 class Notifier(ABC):
+    """
+    Abstract base class for notification services.
+    """
+
     @abstractmethod
-    def send_confirmation(self, customer_data: CustomerData): ...
+    def send_confirmation(self, customer_data: CustomerData):
+        """
+        Sends a confirmation message to the customer.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+        """
+        pass
 
 
 class EmailNotifier(Notifier):
+    """
+    Concrete implementation of Notifier for sending email notifications.
+    """
+
     def send_confirmation(self, customer_data: CustomerData):
+        """
+        Sends a payment confirmation email to the customer.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+
+        Raises:
+            Exception: If the email cannot be sent.
+        """
         msg = MIMEMultipart()
         password = os.getenv("GMAIL_PASS")
         msg["From"] = "ethical.hacking.python@gmail.com"
@@ -58,7 +119,20 @@ class EmailNotifier(Notifier):
 
 
 class SMSNotifier(Notifier):
+    """
+    Concrete implementation of Notifier for sending SMS notifications.
+    """
+
     def send_confirmation(self, customer_data: CustomerData):
+        """
+        Sends a payment confirmation SMS to the customer.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+
+        Raises:
+            Exception: If the SMS cannot be sent.
+        """
         sms_gateway = "Twilio"
         account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         auth_token = os.getenv("TWILIO_AUTH_TOKEN")
@@ -78,33 +152,65 @@ class SMSNotifier(Notifier):
 
 @dataclass
 class TransactionLogger:
+    """
+    Handles transaction logging to a file.
+    """
+
     @staticmethod
-    def log(
-            customer_data: CustomerData,
-            payment_data: PaymentData,
-            charge: Charge
-    ):
+    def log(customer_data: CustomerData, payment_data: PaymentData, charge: Charge):
+        """
+        Logs transaction details to a file.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+            payment_data (PaymentData): Payment details.
+            charge (Charge): Stripe charge object containing transaction status.
+        """
         with open("transactions.log", "a") as log_file:
             log_file.write(f"{customer_data.name} paid {payment_data.amount}\n")
             log_file.write(f"Payment status: {charge['status']}\n")
 
 
 class PaymentProcessor(ABC):
+    """
+    Abstract base class for payment processors.
+    """
+
     @abstractmethod
-    def process_transaction(
-            self,
-            customer_data: CustomerData,
-            payment_data: PaymentData
-    ) -> Charge: ...
+    def process_transaction(self, customer_data: CustomerData, payment_data: PaymentData) -> Charge:
+        """
+        Processes a payment transaction.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+            payment_data (PaymentData): Payment details.
+
+        Returns:
+            Charge: A Stripe charge object representing the transaction.
+        """
+        pass
 
 
 @dataclass
 class StripePaymentProcessor(PaymentProcessor):
-    def process_transaction(
-            self,
-            customer_data: CustomerData,
-            payment_data: PaymentData
-    ) -> Charge:
+    """
+    Concrete implementation of PaymentProcessor using Stripe API.
+    """
+
+    def process_transaction(self, customer_data: CustomerData, payment_data: PaymentData) -> Charge:
+        """
+        Processes a payment using the Stripe API.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+            payment_data (PaymentData): Payment details.
+
+        Returns:
+            Charge: A Stripe charge object representing the transaction.
+
+        Raises:
+            StripeError: If the payment fails.
+        """
         stripe.api_key = os.getenv("STRIPE_API_KEY")
         try:
             charge = stripe.Charge.create(
@@ -122,15 +228,27 @@ class StripePaymentProcessor(PaymentProcessor):
 
 @dataclass
 class PaymentService:
+    """
+    Service class that orchestrates payment processing, notifications, and logging.
+    """
     payment_processor: PaymentProcessor = field(default_factory=StripePaymentProcessor)
     notifier: Notifier = field(default_factory=EmailNotifier)
     logger = TransactionLogger()
 
-    def process_transaction(
-            self,
-            customer_data: CustomerData,
-            payment_data: PaymentData
-    ) -> Charge:
+    def process_transaction(self, customer_data: CustomerData, payment_data: PaymentData) -> Charge:
+        """
+        Processes a payment, sends notifications, and logs the transaction.
+
+        Args:
+            customer_data (CustomerData): The customer's data.
+            payment_data (PaymentData): Payment details.
+
+        Returns:
+            Charge: A Stripe charge object representing the transaction.
+
+        Raises:
+            StripeError: If the payment fails.
+        """
         try:
             charge = self.payment_processor.process_transaction(
                 customer_data, payment_data
@@ -143,6 +261,9 @@ class PaymentService:
 
 
 if __name__ == "__main__":
+    """
+    Example usage of the PaymentService to process transactions.
+    """
     faker = faker.Faker(locale="es_AR")
     sms_notifier = SMSNotifier()
     payment_processor_sms = PaymentService(notifier=sms_notifier)
